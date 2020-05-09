@@ -42,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
             enableNotificationListenerAlertDialog = buildNotificationServiceAlertDialog();
             enableNotificationListenerAlertDialog.show();
         }
-        new Thread(new NotificationListener()).start();
+        new NotificationListener();
     }
 
     /**
