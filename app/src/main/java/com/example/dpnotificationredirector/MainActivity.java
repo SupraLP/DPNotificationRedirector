@@ -8,6 +8,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.TextUtils;
@@ -26,7 +27,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText addressField;
     private EditText portField;
 
-    private AlertDialog enableNotificationListenerAlertDialog;
+    private NotificationBroadcastReceiver nReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,12 +38,23 @@ public class MainActivity extends AppCompatActivity {
         addressField = findViewById(R.id.txt_address);
         portField = findViewById(R.id.txt_port);
 
+        nReceiver = new NotificationBroadcastReceiver();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("com.example.dpnotificationredirector.NOTIFICATION_LISTENER");
+        registerReceiver(nReceiver,filter);
+
         // If the user did not turn the notification listener service on we prompt him to do so
         if(!isNotificationServiceEnabled()){
-            enableNotificationListenerAlertDialog = buildNotificationServiceAlertDialog();
+            AlertDialog enableNotificationListenerAlertDialog = buildNotificationServiceAlertDialog();
             enableNotificationListenerAlertDialog.show();
         }
         new NotificationListener();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(nReceiver);
     }
 
     /**
@@ -84,20 +96,22 @@ public class MainActivity extends AppCompatActivity {
         notificationList.addView(notificationAction);
     }
 
-    private void setConnectionParameters(String address, int port) {
-        Intent intent = new  Intent("com.example.dpnotificationredirector");
-        intent.putExtra("restart socket", addressField.getText().toString() + ":" + portField.getText().toString());
+    private void setConnectionParameters() {
+        Intent intent = new  Intent("com.example.dpnotificationredirector.NOTIFICATION_LISTENER_SERVICE");
+        intent.putExtra("address", addressField.getText().toString());
+        intent.putExtra("port", portField.getText().toString());
         sendBroadcast(intent);
+        Log.d("DP_UI", "setConnectionParameters: IP and port were broadcasted");
     }
 
     public void onClick(View button) {
         switch (button.getId()) {
             case R.id.btn_restartListener:
-                setConnectionParameters(((EditText)findViewById(R.id.txt_address)).getText().toString(), Integer.parseInt(((EditText)findViewById(R.id.txt_port)).getText().toString()));
-                Log.d("DPNotifReaderUI", "onClick: socket restart button was pressed successfully");
+                setConnectionParameters();
+                Log.d("DP_UI", "onClick: socket restart button was pressed successfully");
                 break;
             default:
-                Log.w("DPNotifReaderUI", "onClick: the button press was not successful");
+                Log.w("DP_UI", "onClick: the button press was not successful");
                 break;
         }
     }

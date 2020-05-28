@@ -3,25 +3,40 @@ package com.example.dpnotificationredirector;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.IBinder;
+import android.os.StrictMode;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
 import android.util.Log;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.net.Socket;
 
 public class NotificationListener extends NotificationListenerService {
 
     NetworkThread networkThread;
 
+    private NotificationListenerBroadcastReceiver nlReceiver;
+
     @Override
     public void onCreate() {
         super.onCreate();
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+
+        StrictMode.setThreadPolicy(policy);
+
+        nlReceiver = new NotificationListenerBroadcastReceiver();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("com.example.dpnotificationredirector.NOTIFICATION_LISTENER_SERVICE");
+        registerReceiver(nlReceiver,filter);
+
+        Log.d("DP_Service", "onCreate: created NotificationListener");
         networkThread = new NetworkThread();
-        new Thread(networkThread);
+        networkThread.execute();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(nlReceiver);
     }
 
     @Override
@@ -31,24 +46,25 @@ public class NotificationListener extends NotificationListenerService {
 
     @Override
     public void onNotificationPosted(StatusBarNotification sbn){
-        sendBroadcast(networkThread.sendMessage(sbn.getNotification().toString(), sbn.getId()));
-        Log.d("DPNotifReaderService", "onNotificationPosted: A notification got posted");
+        sendBroadcast(networkThread.sendMessage(sbn.getNotification().toString(), sbn.getId(), true, sbn.getPackageName()));
+        Log.d("DP_Service", "onNotificationPosted: A notification got posted");
     }
 
     @Override
     public void onNotificationRemoved(StatusBarNotification sbn){
-        sendBroadcast(networkThread.sendMessage(sbn.getNotification().toString(), sbn.getId()));
-        Log.d("DPNotifReaderService", "onNotificationRemoved: A notification got removed");
+        sendBroadcast(networkThread.sendMessage(sbn.getNotification().toString(), sbn.getId(), false, sbn.getPackageName()));
+        Log.d("DP_Service", "onNotificationRemoved: A notification got removed");
     }
 
-    public class NotificationBroadcastReceiver extends BroadcastReceiver {
+    public class NotificationListenerBroadcastReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-            String receivedNotification = intent.getStringExtra("Notification Code");
-            if (receivedNotification != null) {
-                networkThread.changeConnectionParameters(receivedNotification);
+            String address = intent.getStringExtra("address");
+            String port = intent.getStringExtra("port");
+            if (address != null && port != null) {
+                networkThread.changeConnectionParameters(address, Integer.parseInt(port));
             }
-            Log.d("DPNotifReaderService", "onReceive: received new connection properties:" + receivedNotification);
+            Log.d("DP_Service", "onReceive: received new connection properties:" + address + ":" + port);
         }
     }
 }
