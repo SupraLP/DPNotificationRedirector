@@ -46,13 +46,15 @@ public class NotificationListener extends NotificationListenerService {
 
     @Override
     public void onNotificationPosted(StatusBarNotification sbn){
-        sendBroadcast(networkThread.sendMessage(sbn.getNotification().toString(), sbn.getId(), true, sbn.getPackageName()));
+        sendBroadcast(networkThread.sendMessage(sbn.getNotification().contentView.toString(), sbn.getId(), true, sbn.getPackageName()));
+        // sbn.getNotification().contentView would return the notification contents as view...
+        // that would need to be converted into a transferable format... or needs to be interpreted on the receiving end...
         Log.d("DP_Service", "onNotificationPosted: A notification got posted");
     }
 
     @Override
     public void onNotificationRemoved(StatusBarNotification sbn){
-        sendBroadcast(networkThread.sendMessage(sbn.getNotification().toString(), sbn.getId(), false, sbn.getPackageName()));
+        sendBroadcast(networkThread.sendMessage("", sbn.getId(), false, sbn.getPackageName()));
         Log.d("DP_Service", "onNotificationRemoved: A notification got removed");
     }
 
